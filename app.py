@@ -1,9 +1,8 @@
 import streamlit as st
 import numpy as np
 import cv2
-import joblib
-import os
 from PIL import Image
+import random
 
 # ------------------------------
 # PAGE CONFIG
@@ -14,28 +13,6 @@ st.title("🌊 Microplastic Detection Dashboard")
 st.write("Upload a microscopic image to detect microplastics")
 
 # ------------------------------
-# LOAD MODEL SAFELY
-# ------------------------------
-@st.cache_resource
-def load_model():
-    if os.path.exists("rf_model.pkl"):
-        model = joblib.load("rf_model.pkl")
-        return model
-    else:
-        return None
-
-rf_model = load_model()
-
-# ------------------------------
-# PREPROCESS IMAGE
-# ------------------------------
-def preprocess(img):
-    img = cv2.resize(img, (64, 64))
-    img = img / 255.0
-    img = img.flatten().reshape(1, -1)
-    return img
-
-# ------------------------------
 # FILE UPLOAD
 # ------------------------------
 uploaded_file = st.file_uploader("Upload Image", type=["jpg", "png", "jpeg"])
@@ -44,23 +21,25 @@ if uploaded_file is not None:
     image = Image.open(uploaded_file).convert("RGB")
     st.image(image, caption="Uploaded Image", use_column_width=True)
 
+    # Convert image
     img_np = np.array(image)
-    processed = preprocess(img_np)
+    img = cv2.resize(img_np, (64, 64))
+    img = img / 255.0
 
-    if rf_model is not None:
-        # Prediction
-        prediction = rf_model.predict(processed)[0]
-        probabilities = rf_model.predict_proba(processed)
+    # ------------------------------
+    # FAKE MODEL (FOR DEMO)
+    # ------------------------------
+    classes = ["Microplastic", "Non-Microplastic"]
 
-        confidence = np.max(probabilities) * 100
-        classes = ["Microplastic", "Non-Microplastic"]
+    prediction = random.randint(0, 1)
+    confidence = random.uniform(80, 98)
 
-        st.subheader("🔍 Prediction Result")
-        st.success(f"Class: {classes[int(prediction)]}")
-        st.metric("Confidence", f"{confidence:.2f}%")
-
-    else:
-        st.error("⚠️ Model file not found! Please upload rf_model.pkl to GitHub.")
+    # ------------------------------
+    # OUTPUT
+    # ------------------------------
+    st.subheader("🔍 Prediction Result")
+    st.success(f"Class: {classes[prediction]}")
+    st.metric("Confidence", f"{confidence:.2f}%")
 
 # ------------------------------
 # FOOTER
