@@ -1,6 +1,5 @@
 import streamlit as st
 import numpy as np
-import cv2
 from PIL import Image
 import pickle
 
@@ -37,14 +36,11 @@ if uploaded_file is not None:
     image = Image.open(uploaded_file).convert("RGB")
     st.image(image, caption="Uploaded Image", use_column_width=True)
 
-    # Convert to numpy
-    img_np = np.array(image)
-
-    # Resize to match training size
-    img = cv2.resize(img_np, (64, 64))
-
-    # Normalize
-    img = img / 255.0
+    # ------------------------------
+    # IMAGE PROCESSING (NO CV2)
+    # ------------------------------
+    image = image.resize((64, 64))   # Resize using PIL
+    img = np.array(image) / 255.0    # Normalize
 
     # Flatten
     img_flat = img.flatten().reshape(1, -1)
