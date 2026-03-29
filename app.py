@@ -1,35 +1,46 @@
 import streamlit as st
 import numpy as np
-from PIL import Image
 import pickle
 import os
+from PIL import Image
 
 # ------------------------------
 # PAGE CONFIG
 # ------------------------------
 st.set_page_config(page_title="Microplastic Detection", layout="centered")
 
-st.title("🌊 Microplastic Detection Dashboard")
+st.title("🔬 Microplastic Detection Dashboard")
 st.write("Upload a microscopic image to detect microplastics")
 
 # ------------------------------
-# LOAD MODEL
+# LOAD MODEL (SAFE)
 # ------------------------------
 @st.cache_resource
 def load_model():
-    if not os.path.exists("model.pkl"):
-        st.error("❌ model.pkl not found. Upload it to GitHub.")
-        st.stop()
+    model_path = "rf_model.pkl"
 
-    with open("model.pkl", "rb") as f:
-        return pickle.load(f)
+    if not os.path.exists(model_path):
+        return None
+
+    with open(model_path, "rb") as f:
+        model = pickle.load(f)
+
+    return model
 
 model = load_model()
 
 # ------------------------------
-# CLASS LABELS
+# IMAGE PROCESSING FUNCTION
 # ------------------------------
-classes = ["Microplastic", "Non-Microplastic"]
+def preprocess_image(image):
+    image = image.resize((64, 64))  # resize
+    image = np.array(image)
+
+    if len(image.shape) == 3:
+        image = image.mean(axis=2)  # convert to grayscale
+
+    image = image.flatten()  # flatten
+    return image.reshape(1, -1)
 
 # ------------------------------
 # FILE UPLOAD
@@ -37,28 +48,27 @@ classes = ["Microplastic", "Non-Microplastic"]
 uploaded_file = st.file_uploader("Upload Image", type=["jpg", "png", "jpeg"])
 
 if uploaded_file is not None:
-    image = Image.open(uploaded_file).convert("RGB")
-    st.image(image, caption="Uploaded Image", use_column_width=True)
+    image = Image.open(uploaded_file)
+    st.image(image, caption="Uploaded Image", use_container_width=True)
 
-    # Process image
-    image = image.resize((64, 64))
-    img = np.array(image) / 255.0
-    img_flat = img.flatten().reshape(1, -1)
+    if model is None:
+        st.error("❌ Model file not found! Upload 'rf_model.pkl' to GitHub.")
+        st.stop()
 
-    # Prediction
-    prediction = model.predict(img_flat)[0]
-    confidence = np.max(model.predict_proba(img_flat)) * 100
+    # preprocess
+    features = preprocess_image(image)
 
-    # Output
-    st.subheader("🔍 Prediction Result")
+    # prediction
+    prediction = model.predict(features)[0]
 
-    if prediction == 0:
-        st.success(f"Class: {classes[0]}")
+    # result
+    if prediction == 1:
+        st.success("✅ Microplastic Detected")
     else:
-        st.error(f"Class: {classes[1]}")
+        st.info("❌ No Microplastic Detected")
 
-    st.metric("Confidence", f"{confidence:.2f}%")
-
-# Footer
+# ------------------------------
+# FOOTER
+# ------------------------------
 st.write("---")
 st.write("Model: Random Forest | Dashboard: Streamlit")
