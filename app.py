@@ -1,74 +1,65 @@
 import streamlit as st
 import numpy as np
+from PIL import Image
 import pickle
 import os
-from PIL import Image
 
-# ------------------------------
-# PAGE CONFIG
-# ------------------------------
 st.set_page_config(page_title="Microplastic Detection", layout="centered")
 
-st.title("🔬 Microplastic Detection Dashboard")
-st.write("Upload a microscopic image to detect microplastics")
+st.title("🌊 Microplastic Dataset Prediction")
 
 # ------------------------------
-# LOAD MODEL (SAFE)
+# LOAD MODEL
 # ------------------------------
 @st.cache_resource
 def load_model():
-    model_path = "rf_model.pkl"
-
-    if not os.path.exists(model_path):
-        return None
-
-    with open(model_path, "rb") as f:
-        model = pickle.load(f)
-
-    return model
+    with open("model.pkl", "rb") as f:
+        return pickle.load(f)
 
 model = load_model()
 
-# ------------------------------
-# IMAGE PROCESSING FUNCTION
-# ------------------------------
-def preprocess_image(image):
-    image = image.resize((64, 64))  # resize
-    image = np.array(image)
-
-    if len(image.shape) == 3:
-        image = image.mean(axis=2)  # convert to grayscale
-
-    image = image.flatten()  # flatten
-    return image.reshape(1, -1)
+classes = ["Microplastic", "Non-Microplastic"]
 
 # ------------------------------
-# FILE UPLOAD
+# LOAD DATASET
 # ------------------------------
-uploaded_file = st.file_uploader("Upload Image", type=["jpg", "png", "jpeg"])
+dataset_path = "dataset"
 
-if uploaded_file is not None:
-    image = Image.open(uploaded_file)
-    st.image(image, caption="Uploaded Image", use_container_width=True)
+selected_class = st.selectbox("Select Category", classes)
 
-    if model is None:
-        st.error("❌ Model file not found! Upload 'rf_model.pkl' to GitHub.")
-        st.stop()
+folder_path = os.path.join(dataset_path, selected_class)
 
-    # preprocess
-    features = preprocess_image(image)
-
-    # prediction
-    prediction = model.predict(features)[0]
-
-    # result
-    if prediction == 1:
-        st.success("✅ Microplastic Detected")
-    else:
-        st.info("❌ No Microplastic Detected")
+images = os.listdir(folder_path)
 
 # ------------------------------
-# FOOTER
+# SELECT IMAGE FROM DATASET
 # ------------------------------
-st.write("---")
-st.write("Model: Random Forest | Dashboard: Streamlit")
+selected_image = st.selectbox("Select Image", images)
+
+img_path = os.path.join(folder_path, selected_image)
+
+image = Image.open(img_path).convert("RGB")
+
+st.image(image, caption="Dataset Image", use_column_width=True)
+
+# ------------------------------
+# PROCESS & PREDICT
+# ------------------------------
+image = image.resize((64, 64))
+img = np.array(image) / 255.0
+img_flat = img.flatten().reshape(1, -1)
+
+prediction = model.predict(img_flat)[0]
+confidence = np.max(model.predict_proba(img_flat)) * 100
+
+# ------------------------------
+# OUTPUT
+# ------------------------------
+st.subheader("🔍 Prediction Result")
+
+if prediction == 0:
+    st.success(f"Class: {classes[0]}")
+else:
+    st.error(f"Class: {classes[1]}")
+
+st.metric("Confidence", f"{confidence:.2f}%")
