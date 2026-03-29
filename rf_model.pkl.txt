@@ -1,0 +1,26 @@
+import numpy as np
+from sklearn.ensemble import RandomForestClassifier
+import pickle
+
+# ----------------------------
+# DUMMY TRAINING DATA (replace with your real data if you have)
+# ----------------------------
+# Example: 100 samples, 4096 features (64x64 image flattened)
+X = np.random.rand(100, 4096)
+
+# Labels: 0 = No Microplastic, 1 = Microplastic
+y = np.random.randint(0, 2, 100)
+
+# ----------------------------
+# TRAIN MODEL
+# ----------------------------
+model = RandomForestClassifier(n_estimators=100)
+model.fit(X, y)
+
+# ----------------------------
+# SAVE MODEL
+# ----------------------------
+with open("rf_model.pkl", "wb") as f:
+    pickle.dump(model, f)
+
+print("✅ rf_model.pkl created successfully!")
