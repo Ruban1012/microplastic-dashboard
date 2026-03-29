@@ -3,11 +3,18 @@ import numpy as np
 from PIL import Image
 import pickle
 import os
-import matplotlib.pyplot as plt
+import pandas as pd
 
-st.set_page_config(page_title="Microplastic Detection", layout="centered")
+# ------------------------------
+# PAGE CONFIG
+# ------------------------------
+st.set_page_config(page_title="Microplastic AI Dashboard", layout="wide")
 
-st.title("🌊 Microplastic Detection Dashboard")
+# ------------------------------
+# TITLE
+# ------------------------------
+st.title("🌊 Microplastic Detection System")
+st.markdown("### AI-based Microplastic Classification Dashboard")
 
 # ------------------------------
 # LOAD MODEL
@@ -22,66 +29,79 @@ model = load_model()
 classes = ["Microplastic", "Non-Microplastic"]
 
 # ------------------------------
-# DATASET MODE
+# SIDEBAR (DATASET CONTROL)
 # ------------------------------
+st.sidebar.header("⚙️ Controls")
+
 dataset_path = "dataset"
+selected_class = st.sidebar.selectbox("Select Category", classes)
 
-selected_class = st.selectbox("Select Category", classes)
 folder_path = os.path.join(dataset_path, selected_class)
-
 images = os.listdir(folder_path)
-selected_image = st.selectbox("Select Image", images)
 
-img_path = os.path.join(folder_path, selected_image)
-
-image = Image.open(img_path).convert("RGB")
-st.image(image, caption="Selected Image", use_column_width=True)
+selected_image = st.sidebar.selectbox("Select Image", images)
 
 # ------------------------------
-# PROCESS IMAGE
+# MAIN LAYOUT (2 COLUMNS)
 # ------------------------------
-image = image.resize((64, 64))
-img = np.array(image) / 255.0
-img_flat = img.flatten().reshape(1, -1)
+col1, col2 = st.columns(2)
 
 # ------------------------------
-# PREDICTION
+# LEFT SIDE → IMAGE
 # ------------------------------
-prediction = model.predict(img_flat)[0]
-probs = model.predict_proba(img_flat)[0]
-confidence = np.max(probs) * 100
+with col1:
+    st.subheader("📸 Selected Image")
 
-# ------------------------------
-# RESULT
-# ------------------------------
-st.subheader("🔍 Prediction Result")
-
-if prediction == 0:
-    st.success(f"Class: {classes[0]}")
-else:
-    st.error(f"Class: {classes[1]}")
-
-st.metric("Confidence", f"{confidence:.2f}%")
+    img_path = os.path.join(folder_path, selected_image)
+    image = Image.open(img_path).convert("RGB")
+    st.image(image, use_column_width=True)
 
 # ------------------------------
-# 📊 BAR CHART (IMPORTANT)
+# RIGHT SIDE → RESULT
 # ------------------------------
-st.subheader("📊 Prediction Probability")
+with col2:
+    st.subheader("🔍 Prediction Result")
 
-fig, ax = plt.subplots()
-ax.bar(classes, probs)
-ax.set_ylabel("Probability")
-ax.set_title("Class Prediction Probability")
+    # Process image
+    image_resized = image.resize((64, 64))
+    img = np.array(image_resized) / 255.0
+    img_flat = img.flatten().reshape(1, -1)
 
-st.pyplot(fig)
+    # Predict
+    prediction = model.predict(img_flat)[0]
+    probs = model.predict_proba(img_flat)[0]
+    confidence = np.max(probs) * 100
+
+    # Display result
+    if prediction == 0:
+        st.success(f"✅ {classes[0]}")
+    else:
+        st.error(f"❌ {classes[1]}")
+
+    st.metric("Confidence", f"{confidence:.2f}%")
+
+    # ------------------------------
+    # PROBABILITY CHART
+    # ------------------------------
+    st.subheader("📊 Prediction Analysis")
+
+    chart_data = pd.DataFrame({
+        "Class": classes,
+        "Probability": probs
+    })
+
+    st.bar_chart(chart_data.set_index("Class"))
+
+    # ------------------------------
+    # EXTRA DETAILS
+    # ------------------------------
+    st.subheader("📈 Detailed Values")
+
+    st.write(f"Microplastic: {probs[0]*100:.2f}%")
+    st.write(f"Non-Microplastic: {probs[1]*100:.2f}%")
 
 # ------------------------------
-# 📈 EXTRA INFO
+# FOOTER
 # ------------------------------
-st.subheader("📈 Analysis")
-
-st.write(f"Microplastic Probability: {probs[0]*100:.2f}%")
-st.write(f"Non-Microplastic Probability: {probs[1]*100:.2f}%")
-
 st.write("---")
-st.write("Model: Random Forest | Visualization Enabled")
+st.markdown("💡 **Model:** Random Forest  |  **UI:** Streamlit Dashboard")
