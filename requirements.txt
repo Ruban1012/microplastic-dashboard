@@ -3,4 +3,4 @@ numpy
 pandas
 scikit-learn
 opencv-python-headless
-tensorflow==2.15.0
+Pillow
